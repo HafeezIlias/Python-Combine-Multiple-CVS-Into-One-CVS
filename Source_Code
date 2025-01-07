@@ -1,0 +1,51 @@
+import pandas as pd
+import os
+
+def combine_to_single_csv(input_folder, output_file):
+    """
+    Combine all Excel and CSV files into one large CSV file with aligned columns and optimized memory usage.
+    
+    Parameters:
+        input_folder (str): Folder containing files.
+        output_file (str): Path for the output CSV file.
+    """
+    chunk_size = 100000  # Number of rows per chunk
+    all_data = []  # Store chunked dataframes
+
+    for file in os.listdir(input_folder):
+        file_path = os.path.join(input_folder, file)
+        try:
+            if file.endswith(".xlsx") or file.endswith(".xls"):
+                for chunk in pd.read_excel(file_path, chunksize=chunk_size, dtype=str):
+                    chunk['Source_File'] = file
+                    all_data.append(chunk)
+                print(f"Processed Excel: {file}")
+            elif file.endswith(".csv"):
+                # Explicit dtype to handle mixed type columns
+                for chunk in pd.read_csv(file_path, chunksize=chunk_size, dtype=str, low_memory=False):
+                    chunk['Source_File'] = file
+                    all_data.append(chunk)
+                print(f"Processed CSV: {file}")
+        except pd.errors.ParserError as pe:
+            print(f"Parsing error in {file}: {pe}")
+        except MemoryError as me:
+            print(f"Memory error in {file}: {me}")
+        except Exception as e:
+            print(f"Error processing {file}: {e}")
+    
+    if all_data:
+        # Write data in chunks to prevent memory overflow
+        with open(output_file, 'w', encoding='utf-8', newline='') as f:
+            header_written = False
+            for chunk in all_data:
+                chunk.to_csv(f, index=False, header=not header_written, mode='a')
+                header_written = True
+        print(f"Combined CSV saved to: {output_file}")
+    else:
+        print("No valid files to process.")
+
+# Example Usage
+input_folder = r"D:/Excel_combine"
+output_file = r"D:/Excel_combine/combined_large_data.csv"
+
+combine_to_single_csv(input_folder, output_file)
